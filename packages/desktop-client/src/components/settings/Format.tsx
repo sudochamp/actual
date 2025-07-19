@@ -21,10 +21,10 @@ import { useSyncedPref } from '@desktop-client/hooks/useSyncedPref';
 
 // Follows Pikaday 'firstDay' numbering
 // https://github.com/Pikaday/Pikaday
-function useDaysOfWeek() {
+function useDaysOfWeek(firstDayIdx: string = '0') {
   const { t } = useTranslation();
 
-  const daysOfWeek: {
+  const allDays: {
     value: SyncedPrefs['firstDayOfWeekIdx'];
     label: string;
   }[] = [
@@ -36,6 +36,13 @@ function useDaysOfWeek() {
     { value: '5', label: t('Friday') },
     { value: '6', label: t('Saturday') },
   ] as const;
+
+  // Rearrange days to start with the selected first day
+  const firstDayIndex = parseInt(firstDayIdx, 10);
+  const daysOfWeek = [
+    ...allDays.slice(firstDayIndex),
+    ...allDays.slice(0, firstDayIndex)
+  ];
 
   return { daysOfWeek };
 }
@@ -55,21 +62,29 @@ export function FormatSettings() {
     useSyncedPref('firstDayOfWeekIdx'); // Sunday;
   const firstDayOfWeekIdx = _firstDayOfWeekIdx || '0';
   const [_weekendDays, setWeekendDaysPref] = useSyncedPref('weekendDays');
-  const weekendDays = _weekendDays ? _weekendDays.split(',') : ['0', '6']; // Default to Sunday and Saturday
+  const weekendDays = _weekendDays 
+    ? (_weekendDays === 'none' ? [] : _weekendDays.split(',').filter(Boolean))
+    : ['0', '6']; // Default to Sunday and Saturday for new users
   const dateFormat = useDateFormat() || 'MM/dd/yyyy';
   const [, setDateFormatPref] = useSyncedPref('dateFormat');
   const [_numberFormat, setNumberFormatPref] = useSyncedPref('numberFormat');
   const numberFormat = _numberFormat || 'comma-dot';
   const [hideFraction, setHideFractionPref] = useSyncedPref('hideFraction');
 
-  const { daysOfWeek } = useDaysOfWeek();
+  const { daysOfWeek } = useDaysOfWeek(firstDayOfWeekIdx);
 
   const handleWeekendDayToggle = (dayValue: string) => {
-    const updatedWeekendDays = weekendDays.includes(dayValue)
-      ? weekendDays.filter(day => day !== dayValue)
-      : [...weekendDays, dayValue];
+    const isCurrentlySelected = weekendDays.includes(dayValue);
 
-    setWeekendDaysPref(updatedWeekendDays.join(','));
+    if (isCurrentlySelected) {
+      // Remove the day
+      const newWeekendDays = weekendDays.filter(day => day !== dayValue);
+      setWeekendDaysPref(newWeekendDays.length > 0 ? newWeekendDays.join(',') : 'none');
+    } else {
+      // Add the day
+      const newWeekendDays = [...weekendDays, dayValue];
+      setWeekendDaysPref(newWeekendDays.join(','));
+    }
   };
 
   const selectButtonClassName = css({
@@ -84,83 +99,146 @@ export function FormatSettings() {
         <View
           style={{
             flexDirection: 'column',
-            gap: '1em',
+            gap: '1.5em',
             width: '100%',
-            [`@media (min-width: ${
-              sidebar.floating
-                ? tokens.breakpoint_small
-                : tokens.breakpoint_medium
-            })`]: {
-              flexDirection: 'row',
-            },
           }}
         >
-          <Column title={t('Numbers')}>
-            <Select
-              key={String(hideFraction)} // needed because label does not update
-              value={numberFormat}
-              onChange={format => setNumberFormatPref(format)}
-              options={numberFormats.map(f => [
-                f.value,
-                String(hideFraction) === 'true' ? f.labelNoFraction : f.label,
-              ])}
-              className={selectButtonClassName}
-            />
-
-            <Text style={{ display: 'flex' }}>
-              <Checkbox
-                id="settings-textDecimal"
-                checked={String(hideFraction) === 'true'}
-                onChange={e =>
-                  setHideFractionPref(String(e.currentTarget.checked))
-                }
+          {/* First row: Numbers, Dates, First day of the week */}
+          <View
+            style={{
+              flexDirection: 'column',
+              gap: '1em',
+              width: '100%',
+              [`@media (min-width: ${
+                sidebar.floating
+                  ? tokens.breakpoint_small
+                  : tokens.breakpoint_medium
+              })`]: {
+                flexDirection: 'row',
+              },
+            }}
+          >
+            <Column title={t('Numbers')}>
+              <Select
+                key={String(hideFraction)} // needed because label does not update
+                value={numberFormat}
+                onChange={format => setNumberFormatPref(format)}
+                options={numberFormats.map(f => [
+                  f.value,
+                  String(hideFraction) === 'true' ? f.labelNoFraction : f.label,
+                ])}
+                className={selectButtonClassName}
               />
-              <label htmlFor="settings-textDecimal">
-                <Trans>Hide decimal places</Trans>
-              </label>
-            </Text>
-          </Column>
 
-          <Column title={t('Dates')}>
-            <Select
-              value={dateFormat}
-              onChange={format => setDateFormatPref(format)}
-              options={dateFormats.map(f => [f.value, f.label])}
-              className={selectButtonClassName}
-            />
-          </Column>
+              <Text style={{ display: 'flex' }}>
+                <Checkbox
+                  id="settings-textDecimal"
+                  checked={String(hideFraction) === 'true'}
+                  onChange={e =>
+                    setHideFractionPref(String(e.currentTarget.checked))
+                  }
+                />
+                <label htmlFor="settings-textDecimal">
+                  <Trans>Hide decimal places</Trans>
+                </label>
+              </Text>
+            </Column>
 
-          <Column title={t('First day of the week')}>
-            <Select
-              value={firstDayOfWeekIdx}
-              onChange={idx => setFirstDayOfWeekIdxPref(idx)}
-              options={daysOfWeek.map(f => [f.value, f.label])}
-              className={selectButtonClassName}
-            />
-          </Column>
+            <Column title={t('Dates')}>
+              <Select
+                value={dateFormat}
+                onChange={format => setDateFormatPref(format)}
+                options={dateFormats.map(f => [f.value, f.label])}
+                className={selectButtonClassName}
+              />
+            </Column>
 
-          <Column title={t('Weekend days')}>
-            <View
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.5em',
-              }}
-            >
-              {daysOfWeek.map(day => (
-                <Text key={day.value} style={{ display: 'flex' }}>
-                  <Checkbox
-                    id={`weekend-day-${day.value}`}
-                    checked={weekendDays.includes(day.value)}
-                    onChange={() => handleWeekendDayToggle(day.value)}
-                  />
-                  <label htmlFor={`weekend-day-${day.value}`}>
-                    {day.label}
-                  </label>
-                </Text>
-              ))}
-            </View>
-          </Column>
+            <Column title={t('First day of the week')}>
+              <Select
+                value={firstDayOfWeekIdx}
+                onChange={idx => setFirstDayOfWeekIdxPref(idx)}
+                options={daysOfWeek.map(f => [f.value, f.label])}
+                className={selectButtonClassName}
+              />
+            </Column>
+          </View>
+
+          {/* Second row: Weekend days */}
+          <View
+            style={{
+              width: '100%',
+            }}
+          >
+            <Column title={t('Weekend days')}>
+              <View
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  flexWrap: 'wrap',
+                  gap: '0.5em',
+                }}
+              >
+                {daysOfWeek.map(day => {
+                  const isChecked = weekendDays.includes(day.value);
+                  const dayShort = day.label.slice(0, 3);
+
+                  return (
+                    <View
+                      key={day.value}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleWeekendDayToggle(day.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleWeekendDayToggle(day.value);
+                        }
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        border: `2px solid ${isChecked ? theme.pageTextPositive : theme.buttonNormalBorder}`,
+                        backgroundColor: isChecked ? theme.pageTextPositive + '20' : theme.buttonNormalBackground,
+                        color: isChecked ? theme.pageTextPositive : theme.pageText,
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        width: '52px',
+                        height: '36px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        transition: 'background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease',
+                        '&:hover': {
+                          backgroundColor: isChecked
+                            ? theme.pageTextPositive + '30'
+                            : theme.buttonNormalBackgroundHover,
+                        },
+                        '&:focus': {
+                          outline: `2px solid ${theme.pageTextPositive}`,
+                          outlineOffset: '2px',
+                        },
+                      }}
+                      className={css({
+                        '&:hover': {
+                          backgroundColor: isChecked
+                            ? theme.pageTextPositive + '30'
+                            : theme.buttonNormalBackgroundHover,
+                        },
+                        '&:focus': {
+                          outline: `2px solid ${theme.pageTextPositive}`,
+                          outlineOffset: '2px',
+                        },
+                      })}
+                    >
+                      {dayShort}
+                    </View>
+                  );
+                })}
+              </View>
+            </Column>
+          </View>
         </View>
       }
     >

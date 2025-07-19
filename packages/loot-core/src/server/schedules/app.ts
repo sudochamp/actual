@@ -45,7 +45,10 @@ async function getWeekendDays(): Promise<string[]> {
   );
 
   const weekendDaysValue = weekendDaysData[0]?.value;
-  return weekendDaysValue ? weekendDaysValue.split(',') : ['0', '6']; // Default to Sunday and Saturday
+  if (weekendDaysValue === 'none') {
+    return [];
+  }
+  return weekendDaysValue ? weekendDaysValue.split(',').filter(Boolean) : ['0', '6']; // Default to Sunday and Saturday
 }
 
 function zip(arr1, arr2) {
