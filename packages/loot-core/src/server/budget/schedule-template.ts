@@ -1,5 +1,6 @@
 // @ts-strict-ignore
 import * as monthUtils from '../../shared/months';
+import { q } from '../../shared/query';
 import {
   getNextDate,
   getDateWithSkippedWeekend,
@@ -7,10 +8,20 @@ import {
 } from '../../shared/schedules';
 import { CategoryEntity } from '../../types/models';
 import { ScheduleTemplate, Template } from '../../types/models/templates';
+import { aqlQuery } from '../aql';
 import * as db from '../db';
 import { getRuleForSchedule } from '../schedules/app';
 
 import { isReflectBudget } from './actions';
+
+async function getWeekendDays(): Promise<string[]> {
+  const { data: weekendDaysData } = await aqlQuery(
+    q('preferences').filter({ id: 'weekendDays' }).select('value'),
+  );
+
+  const weekendDaysValue = weekendDaysData[0]?.value;
+  return weekendDaysValue ? weekendDaysValue.split(',') : ['0', '6']; // Default to Sunday and Saturday
+}
 
 type ScheduleTemplateTarget = {
   name: string;
@@ -31,6 +42,7 @@ async function createScheduleList(
 ) {
   const t: Array<ScheduleTemplateTarget> = [];
   const errors: string[] = [];
+  const weekendDays = await getWeekendDays();
 
   for (const template of templates) {
     const { id: sid, completed } = await db.first<
@@ -73,6 +85,8 @@ async function createScheduleList(
     const next_date_string = getNextDate(
       dateConditions,
       monthUtils._parse(current_month),
+      false,
+      weekendDays,
     );
     const target_interval = dateConditions.value.interval
       ? dateConditions.value.interval
@@ -112,12 +126,14 @@ async function createScheduleList(
             dateConditions,
             monthUtils._parse(current_month),
             true,
+            weekendDays,
           );
           let nextDate = dateConditions.value.skipWeekend
             ? monthUtils.dayFromDate(
                 getDateWithSkippedWeekend(
                   monthUtils._parse(nextBaseDate),
                   dateConditions.value.weekendSolveMode,
+                  weekendDays,
                 ),
               )
             : nextBaseDate;
@@ -129,12 +145,14 @@ async function createScheduleList(
               dateConditions,
               monthUtils._parse(oneDayLater),
               true,
+              weekendDays,
             );
             nextDate = dateConditions.value.skipWeekend
               ? monthUtils.dayFromDate(
                   getDateWithSkippedWeekend(
                     monthUtils._parse(nextBaseDate),
                     dateConditions.value.weekendSolveMode,
+                    weekendDays,
                   ),
                 )
               : nextBaseDate;

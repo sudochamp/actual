@@ -54,6 +54,8 @@ export function FormatSettings() {
   const [_firstDayOfWeekIdx, setFirstDayOfWeekIdxPref] =
     useSyncedPref('firstDayOfWeekIdx'); // Sunday;
   const firstDayOfWeekIdx = _firstDayOfWeekIdx || '0';
+  const [_weekendDays, setWeekendDaysPref] = useSyncedPref('weekendDays');
+  const weekendDays = _weekendDays ? _weekendDays.split(',') : ['0', '6']; // Default to Sunday and Saturday
   const dateFormat = useDateFormat() || 'MM/dd/yyyy';
   const [, setDateFormatPref] = useSyncedPref('dateFormat');
   const [_numberFormat, setNumberFormatPref] = useSyncedPref('numberFormat');
@@ -61,6 +63,14 @@ export function FormatSettings() {
   const [hideFraction, setHideFractionPref] = useSyncedPref('hideFraction');
 
   const { daysOfWeek } = useDaysOfWeek();
+
+  const handleWeekendDayToggle = (dayValue: string) => {
+    const updatedWeekendDays = weekendDays.includes(dayValue)
+      ? weekendDays.filter(day => day !== dayValue)
+      : [...weekendDays, dayValue];
+
+    setWeekendDaysPref(updatedWeekendDays.join(','));
+  };
 
   const selectButtonClassName = css({
     '&[data-hovered]': {
@@ -127,6 +137,29 @@ export function FormatSettings() {
               options={daysOfWeek.map(f => [f.value, f.label])}
               className={selectButtonClassName}
             />
+          </Column>
+
+          <Column title={t('Weekend days')}>
+            <View
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5em',
+              }}
+            >
+              {daysOfWeek.map(day => (
+                <Text key={day.value} style={{ display: 'flex' }}>
+                  <Checkbox
+                    id={`weekend-day-${day.value}`}
+                    checked={weekendDays.includes(day.value)}
+                    onChange={() => handleWeekendDayToggle(day.value)}
+                  />
+                  <label htmlFor={`weekend-day-${day.value}`}>
+                    {day.label}
+                  </label>
+                </Text>
+              ))}
+            </View>
           </Column>
         </View>
       }

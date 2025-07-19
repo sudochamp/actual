@@ -332,6 +332,7 @@ export function getNextDate(
   dateCond,
   start = new Date(monthUtils.currentDay()),
   noSkipWeekend = false,
+  weekendDays: string[] = ['0', '6'],
 ) {
   start = d.startOfDay(start);
 
@@ -355,6 +356,7 @@ export function getNextDate(
         date = getDateWithSkippedWeekend(
           date,
           value.schedule.data.weekendSolve,
+          weekendDays,
         );
       }
       return monthUtils.dayFromDate(date);
@@ -363,15 +365,46 @@ export function getNextDate(
   return null;
 }
 
+function isCustomWeekend(
+  date: Date,
+  weekendDays: string[] = ['0', '6'],
+): boolean {
+  const dayOfWeek = date.getDay().toString();
+  return weekendDays.includes(dayOfWeek);
+}
+
+function getNextNonWeekendDay(
+  date: Date,
+  weekendDays: string[] = ['0', '6'],
+): Date {
+  let currentDate = new Date(date);
+  while (isCustomWeekend(currentDate, weekendDays)) {
+    currentDate = d.addDays(currentDate, 1);
+  }
+  return currentDate;
+}
+
+function getPreviousNonWeekendDay(
+  date: Date,
+  weekendDays: string[] = ['0', '6'],
+): Date {
+  let currentDate = new Date(date);
+  while (isCustomWeekend(currentDate, weekendDays)) {
+    currentDate = d.subDays(currentDate, 1);
+  }
+  return currentDate;
+}
+
 export function getDateWithSkippedWeekend(
   date: Date,
   solveMode: 'after' | 'before',
+  weekendDays: string[] = ['0', '6'],
 ) {
-  if (d.isWeekend(date)) {
+  if (isCustomWeekend(date, weekendDays)) {
     if (solveMode === 'after') {
-      return d.nextMonday(date);
+      return getNextNonWeekendDay(date, weekendDays);
     } else if (solveMode === 'before') {
-      return d.previousFriday(date);
+      return getPreviousNonWeekendDay(date, weekendDays);
     } else {
       throw new Error('Unknown weekend solve mode, this should not happen!');
     }

@@ -60,22 +60,32 @@ describe('schedule app', () => {
 
     it('getNextDate works with date conditions', () => {
       expect(
-        getNextDate({ op: 'is', field: 'date', value: '2021-04-30' }),
+        getNextDate(
+          { op: 'is', field: 'date', value: '2021-04-30' },
+          undefined,
+          false,
+          ['0', '6'],
+        ),
       ).toBe('2021-04-30');
 
       expect(
-        getNextDate({
-          op: 'is',
-          field: 'date',
-          value: {
-            start: '2020-12-20',
-            frequency: 'monthly',
-            patterns: [
-              { type: 'day', value: 15 },
-              { type: 'day', value: 30 },
-            ],
+        getNextDate(
+          {
+            op: 'is',
+            field: 'date',
+            value: {
+              start: '2020-12-20',
+              frequency: 'monthly',
+              patterns: [
+                { type: 'day', value: 15 },
+                { type: 'day', value: 30 },
+              ],
+            },
           },
-        }),
+          undefined,
+          false,
+          ['0', '6'],
+        ),
       ).toBe('2020-12-30');
     });
   });

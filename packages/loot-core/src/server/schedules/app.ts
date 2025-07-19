@@ -39,6 +39,15 @@ import { findSchedules } from './find-schedules';
 
 // Utilities
 
+async function getWeekendDays(): Promise<string[]> {
+  const { data: weekendDaysData } = await aqlQuery(
+    q('preferences').filter({ id: 'weekendDays' }).select('value'),
+  );
+
+  const weekendDaysValue = weekendDaysData[0]?.value;
+  return weekendDaysValue ? weekendDaysValue.split(',') : ['0', '6']; // Default to Sunday and Saturday
+}
+
 function zip(arr1, arr2) {
   const result = [];
   for (let i = 0; i < arr1.length; i++) {
@@ -132,9 +141,12 @@ export async function setNextDate({
 
   // Only do this if a date condition exists
   if (dateCond) {
+    const weekendDays = await getWeekendDays();
     const newNextDate = getNextDate(
       dateCond,
       start ? start(nextDate) : new Date(),
+      false,
+      weekendDays,
     );
 
     if (newNextDate !== nextDate) {
@@ -196,7 +208,8 @@ export async function createSchedule({
     throw new Error('Date is required');
   }
 
-  const nextDate = getNextDate(dateCond);
+  const weekendDays = await getWeekendDays();
+  const nextDate = getNextDate(dateCond, undefined, false, weekendDays);
   const nextDateRepr = nextDate ? toDateRepr(nextDate) : null;
   if (schedule) {
     if (schedule.name) {
@@ -341,13 +354,18 @@ async function getUpcomingDates({ config, count }) {
 
   try {
     const schedule = new RSchedule({ rrules: rules });
+    const weekendDays = await getWeekendDays();
 
     return schedule
       .occurrences({ start: d.startOfDay(new Date()), take: count })
       .toArray()
       .map(date =>
         config.skipWeekend
-          ? getDateWithSkippedWeekend(date.date, config.weekendSolveMode)
+          ? getDateWithSkippedWeekend(
+              date.date,
+              config.weekendSolveMode,
+              weekendDays,
+            )
           : date.date,
       )
       .map(date => dayFromDate(date));

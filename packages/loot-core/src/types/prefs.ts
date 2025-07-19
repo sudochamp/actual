@@ -13,6 +13,7 @@ export type SyncedPrefs = Partial<
     | 'budgetType'
     | 'upcomingScheduledTransactionLength'
     | 'firstDayOfWeekIdx'
+    | 'weekendDays'
     | 'dateFormat'
     | 'numberFormat'
     | 'hideFraction'
