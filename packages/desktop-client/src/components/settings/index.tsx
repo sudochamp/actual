@@ -27,7 +27,7 @@ import { ResetCache, ResetSync } from './Reset';
 import { ThemeSettings } from './Themes';
 import { AdvancedToggle, Setting } from './UI';
 
-import { closeBudget } from '@desktop-client/budgets/budgetsSlice';
+import { closeBudget } from '@desktop-client/budgetfiles/budgetfilesSlice';
 import { Link } from '@desktop-client/components/common/Link';
 import { FormField, FormLabel } from '@desktop-client/components/forms';
 import { MOBILE_NAV_HEIGHT } from '@desktop-client/components/mobile/MobileNavTabs';
@@ -115,6 +115,7 @@ function IDName({ children }: { children: ReactNode }) {
 function AdvancedAbout() {
   const [budgetId] = useMetadataPref('id');
   const [groupId] = useMetadataPref('groupId');
+  const { t } = useTranslation();
 
   return (
     <Setting>
@@ -133,15 +134,15 @@ function AdvancedAbout() {
       </Text>
       <Text style={{ color: theme.pageText }}>
         <Trans>
-          <IDName>Sync ID:</IDName> {{ syncId: groupId || '(none)' }}
+          <IDName>Sync ID:</IDName> {{ syncId: groupId || t('(none)') }}
         </Trans>
       </Text>
       {/* low priority todo: eliminate some or all of these, or decide when/if to show them */}
       {/* <Text>
-        <IDName>Cloud File ID:</IDName> {prefs.cloudFileId || '(none)'}
+        <IDName>Cloud File ID:</IDName> {prefs.cloudFileId || t('(none)')}
       </Text>
       <Text>
-        <IDName>User ID:</IDName> {prefs.userId || '(none)'}
+        <IDName>User ID:</IDName> {prefs.userId || t('(none)')}
       </Text> */}
     </Setting>
   );
